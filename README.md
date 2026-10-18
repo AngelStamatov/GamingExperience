@@ -16,7 +16,7 @@ interactive commands and application wiring will be added later.
 Betty.Wallet.sln
 src/
   Betty.Wallet.Console/  Console entry point; references Core.
-  Betty.Wallet.Core/     Wallet, SlotGame, RoundResult, and IRandomSource.
+  Betty.Wallet.Core/     WalletService, Wallet, SlotGame, RoundResult, and IRandomSource.
 tests/
   Betty.Wallet.Tests/    Deterministic xUnit tests; references Core.
 ```
@@ -63,7 +63,19 @@ Slot game rules and explicit assumptions:
   stake, rather than net profit; the stake is not added a second time.
 - `RoundResult` is immutable and contains `BetAmount`, `Multiplier`, and `Payout`.
 - `SlotGame` receives `IRandomSource` through its constructor and has no dependency
-  on Wallet. A concrete random source and wallet/console integration are deferred.
+  on Wallet. A concrete random source and console integration are deferred.
+
+`WalletService` connects the supplied Wallet and SlotGame synchronously. It exposes
+the current balance and delegates deposits and withdrawals to Wallet. `PlaceBet`
+validates the 1-10 bet range first, then available funds, before any random draw.
+It obtains a complete game result before applying it with `Wallet.ApplyRound`.
+
+`ApplyRound` requires a positive, funded bet and a nonnegative payout, including
+zero. It calculates `Balance - betAmount + payout` in a local variable before
+assigning the balance; it does not perform separate withdrawal and deposit calls.
+Invalid arguments, insufficient funds, random source errors, and decimal overflow
+leave the wallet balance unchanged. Decimal overflow propagates as
+`OverflowException`. No concurrency coordination is provided.
 
 Currency remains unspecified. Record any further assumptions here before adding
 rules. Keep the architecture simple and dependencies minimal.

@@ -28,4 +28,25 @@ public sealed class Wallet
 
         Balance -= amount;
     }
+
+    public void ApplyRound(decimal betAmount, decimal payout)
+    {
+        if (betAmount <= 0m)
+        {
+            throw new ArgumentOutOfRangeException(nameof(betAmount), betAmount, "Bet amount must be positive.");
+        }
+
+        if (payout < 0m)
+        {
+            throw new ArgumentOutOfRangeException(nameof(payout), payout, "Payout must not be negative.");
+        }
+
+        if (betAmount > Balance)
+        {
+            throw new InvalidOperationException("Insufficient balance.");
+        }
+
+        var newBalance = Balance - betAmount + payout;
+        Balance = newBalance;
+    }
 }
