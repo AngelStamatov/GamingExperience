@@ -1,8 +1,8 @@
 # Betty Wallet
 
-A small C#/.NET 8 console application intended to support deposits, withdrawals,
-and a slot game. This initial skeleton only prints the application name; business
-rules and tests will be added in later changes.
+A small C#/.NET 8 application with wallet deposits, withdrawals, and an independent
+slot game in Core. The console currently prints only the application name;
+interactive commands and application wiring will be added later.
 
 ## Requirements
 
@@ -16,9 +16,9 @@ rules and tests will be added in later changes.
 Betty.Wallet.sln
 src/
   Betty.Wallet.Console/  Console entry point; references Core.
-  Betty.Wallet.Core/     Business logic library; currently empty.
+  Betty.Wallet.Core/     Wallet, SlotGame, RoundResult, and IRandomSource.
 tests/
-  Betty.Wallet.Tests/    xUnit test project; references Core; currently empty.
+  Betty.Wallet.Tests/    Deterministic xUnit tests; references Core.
 ```
 
 The console interface and business logic live in separate projects. Core has no
@@ -36,17 +36,34 @@ dotnet run --project src/Betty.Wallet.Console/Betty.Wallet.Console.csproj
 dotnet test Betty.Wallet.sln
 ```
 
-No tests are defined yet, so `dotnet test` is expected to report that no tests
-were found. Add real business rule and boundary case tests as behavior is
-implemented.
+Tests cover business rules and boundary cases. Slot tests use a scripted fake
+`IRandomSource` that checks requested ranges; they use no real randomness or
+statistical assertions.
 
 ## Assumptions and unspecified rules
 
-This stage establishes project structure only. Currency, starting balance,
-deposit and withdrawal limits, monetary precision and rounding, bet limits,
-slot probabilities, and payouts remain unspecified; no defaults are implemented.
-Record any chosen assumptions here before implementing those rules.
+Wallet starts at zero. Deposits and withdrawals must be positive, and withdrawals
+cannot exceed the balance. All monetary values use `decimal`.
 
-Future monetary values must use `decimal`. Random number generation must be
-injected through an abstraction to allow deterministic tests. Keep the architecture
-simple and dependencies minimal.
+Slot game rules and explicit assumptions:
+
+- Bets from 1 to 10 inclusive are accepted. Invalid bets are rejected before any
+  random draw. Bets may have more than two decimal places; only payout is rounded.
+- Each round selects a category with `Next(0, 100)`. The upper bound of every
+  `IRandomSource.Next` call is exclusive.
+
+| Category draw | Outcome | Multiplier |
+| --- | --- | --- |
+| 0-49 | Loss | 0; no multiplier draw |
+| 50-89 | Small win | `Next(1, 201) / 100m`, from 0.01 to 2.00 |
+| 90-99 | Large win | `Next(201, 1001) / 100m`, from 2.01 to 10.00 |
+
+- Payout is `betAmount * multiplier`, rounded to two decimal places using
+  `MidpointRounding.AwayFromZero`. It is the total returned amount, including the
+  stake, rather than net profit; the stake is not added a second time.
+- `RoundResult` is immutable and contains `BetAmount`, `Multiplier`, and `Payout`.
+- `SlotGame` receives `IRandomSource` through its constructor and has no dependency
+  on Wallet. A concrete random source and wallet/console integration are deferred.
+
+Currency remains unspecified. Record any further assumptions here before adding
+rules. Keep the architecture simple and dependencies minimal.
