@@ -97,7 +97,7 @@ public class CommandLoopTests
     {
         var (output, balance) = RunSession("deposit 1\nwithdraw 1\nexit\n", new FakeRandomSource(), decimal.MaxValue);
 
-        Assert.Contains("Amount is too large. Balance: $79228162514264337593543950335.00", output);
+        Assert.Contains("Result is too large or requires unsupported decimal precision. Balance: $79228162514264337593543950335.00", output);
         Assert.Contains("Withdrew $1.00. Balance: $79228162514264337593543950334.00", output);
         Assert.Equal(79228162514264337593543950334m, balance);
     }
@@ -109,7 +109,18 @@ public class CommandLoopTests
 
         var (output, balance) = RunSession("bet 5\nwithdraw 1\nexit\n", random, decimal.MaxValue);
 
-        Assert.Contains("Amount is too large. Balance: $79228162514264337593543950335.00", output);
+        Assert.Contains("Result is too large or requires unsupported decimal precision. Balance: $79228162514264337593543950335.00", output);
+        Assert.Contains("Withdrew $1.00. Balance: $79228162514264337593543950334.00", output);
+        Assert.Equal(79228162514264337593543950334m, balance);
+    }
+
+    [Fact]
+    public void Run_InexactWithdrawal_ReportsUnsupportedPrecisionAndContinues()
+    {
+        var (output, balance) = RunSession("withdraw 0.01\nwithdraw 1\nexit\n", new FakeRandomSource(), decimal.MaxValue);
+
+        Assert.Contains("Result is too large or requires unsupported decimal precision. Balance: $79228162514264337593543950335.00", output);
+        Assert.DoesNotContain("Withdrew $0.01.", output);
         Assert.Contains("Withdrew $1.00. Balance: $79228162514264337593543950334.00", output);
         Assert.Equal(79228162514264337593543950334m, balance);
     }

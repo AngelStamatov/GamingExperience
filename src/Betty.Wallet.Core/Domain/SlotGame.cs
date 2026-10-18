@@ -4,6 +4,9 @@ namespace Betty.Wallet.Core.Domain;
 
 public sealed class SlotGame
 {
+    public const decimal MinimumBetAmount = 1m;
+    public const decimal MaximumBetAmount = 10m;
+
     private readonly IRandomSource _randomSource;
 
     public SlotGame(IRandomSource randomSource)
@@ -14,7 +17,7 @@ public sealed class SlotGame
 
     public RoundResult Play(decimal betAmount)
     {
-        if (betAmount < 1m || betAmount > 10m)
+        if (betAmount < MinimumBetAmount || betAmount > MaximumBetAmount)
         {
             throw new ArgumentOutOfRangeException(nameof(betAmount), betAmount, "Bet amount must be between 1 and 10 inclusive.");
         }

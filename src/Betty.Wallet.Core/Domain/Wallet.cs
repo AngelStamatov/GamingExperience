@@ -1,3 +1,5 @@
+using Betty.Wallet.Core.Internal;
+
 namespace Betty.Wallet.Core.Domain;
 
 public sealed class Wallet
@@ -11,7 +13,8 @@ public sealed class Wallet
             throw new ArgumentOutOfRangeException(nameof(amount), amount, "Deposit amount must be positive.");
         }
 
-        Balance += amount;
+        var newBalance = ExactDecimalArithmetic.Sum(Balance, amount);
+        Balance = newBalance;
     }
 
     public void Withdraw(decimal amount)
@@ -26,7 +29,8 @@ public sealed class Wallet
             throw new InvalidOperationException("Insufficient balance.");
         }
 
-        Balance -= amount;
+        var newBalance = ExactDecimalArithmetic.Sum(Balance, -amount);
+        Balance = newBalance;
     }
 
     public void ApplyRound(decimal betAmount, decimal payout)
@@ -46,7 +50,7 @@ public sealed class Wallet
             throw new InvalidOperationException("Insufficient balance.");
         }
 
-        var newBalance = Balance - betAmount + payout;
+        var newBalance = ExactDecimalArithmetic.Sum(Balance, -betAmount, payout);
         Balance = newBalance;
     }
 }

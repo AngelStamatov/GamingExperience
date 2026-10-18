@@ -21,7 +21,7 @@ src/
   Betty.Wallet.Console/  Command parser, command loop, and random source; references Core.
   Betty.Wallet.Core/     WalletService, Wallet, SlotGame, RoundResult, and IRandomSource.
 tests/
-  Betty.Wallet.Tests/    Deterministic xUnit tests; references Core.
+  Betty.Wallet.Tests/    Deterministic xUnit tests; references Core and Console.
 ```
 
 The console interface and business logic live in separate projects. Core has no
@@ -92,6 +92,14 @@ Goodbye.
 Wallet starts at zero. Deposits and withdrawals must be positive, and withdrawals
 cannot exceed the balance. All monetary values use `decimal`.
 
+Wallet arithmetic is exact: `Deposit`, `Withdraw`, and `ApplyRound` use scaled
+integers internally and assign the balance only when the final result can be
+represented exactly as `decimal`. A result outside the decimal range or requiring
+unsupported precision throws `OverflowException` and leaves the balance unchanged.
+Wallet never rounds monetary values or imposes an application-specific balance cap.
+`decimal.MaxValue` remains a valid balance, and representable fractional amounts
+are accepted.
+
 Slot game rules and explicit assumptions:
 
 - Bets from 1 to 10 inclusive are accepted. Invalid bets are rejected before any
@@ -119,11 +127,14 @@ validates the 1-10 bet range first, then available funds, before any random draw
 It obtains a complete game result before applying it with `Wallet.ApplyRound`.
 
 `ApplyRound` requires a positive, funded bet and a nonnegative payout, including
-zero. It calculates `Balance - betAmount + payout` in a local variable before
-assigning the balance; it does not perform separate withdrawal and deposit calls.
-Invalid arguments, insufficient funds, random source errors, and decimal overflow
-leave the wallet balance unchanged. Decimal overflow propagates as
-`OverflowException`. No concurrency coordination is provided.
+zero. It evaluates the entire `Balance - betAmount + payout` expression exactly
+before converting the final result to `decimal` and assigning the balance. Thus,
+fractional bet and payout terms can cancel even if an intermediate decimal result
+would lose precision. It does not perform separate withdrawal and deposit calls.
+Invalid arguments, insufficient funds, random source errors, and unrepresentable
+arithmetic results leave the wallet balance unchanged. The console reports both
+an excessive result and unsupported decimal precision as an operation error and
+continues. No concurrency coordination is provided.
 
 The console displays amounts as dollars. Record any further assumptions here
 before adding rules. Keep the architecture simple and dependencies minimal.

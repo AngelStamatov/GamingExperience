@@ -216,6 +216,39 @@ public class WalletServiceTests
         random.VerifyAllCallsMade();
     }
 
+    [Fact]
+    public void PlaceBet_InexactFinalBalance_ThrowsAndPreservesBalance()
+    {
+        var wallet = new DomainWallet();
+        wallet.Deposit(decimal.MaxValue);
+        var random = new FakeRandomSource((0, 100, 50), (1, 201, 99));
+        var service = new WalletService(wallet, new SlotGame(random));
+
+        Assert.Throws<OverflowException>(() => service.PlaceBet(1.01m));
+
+        Assert.Equal(decimal.MaxValue, wallet.Balance);
+        Assert.Equal(decimal.MaxValue, service.Balance);
+        random.VerifyAllCallsMade();
+    }
+
+    [Fact]
+    public void PlaceBet_ExactFinalBalanceWithFractionalBet_Succeeds()
+    {
+        var wallet = new DomainWallet();
+        wallet.Deposit(decimal.MaxValue);
+        var random = new FakeRandomSource((0, 100, 50), (1, 201, 100));
+        var service = new WalletService(wallet, new SlotGame(random));
+
+        var result = service.PlaceBet(1.01m);
+
+        Assert.Equal(1.01m, result.BetAmount);
+        Assert.Equal(1m, result.Multiplier);
+        Assert.Equal(1.01m, result.Payout);
+        Assert.Equal(decimal.MaxValue, wallet.Balance);
+        Assert.Equal(decimal.MaxValue, service.Balance);
+        random.VerifyAllCallsMade();
+    }
+
     private sealed class ThrowingRandomSource : IRandomSource
     {
         private readonly int _throwOnCall;

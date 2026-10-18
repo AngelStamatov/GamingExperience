@@ -24,7 +24,7 @@ public sealed class WalletService
 
     public RoundResult PlaceBet(decimal betAmount)
     {
-        if (betAmount < 1m || betAmount > 10m)
+        if (betAmount < SlotGame.MinimumBetAmount || betAmount > SlotGame.MaximumBetAmount)
         {
             throw new ArgumentOutOfRangeException(nameof(betAmount), betAmount, "Bet amount must be between 1 and 10 inclusive.");
         }

@@ -63,7 +63,7 @@ public sealed class CommandLoop
             }
             catch (OverflowException)
             {
-                WriteResult("Amount is too large.");
+                WriteResult("Result is too large or requires unsupported decimal precision.");
             }
         }
 
