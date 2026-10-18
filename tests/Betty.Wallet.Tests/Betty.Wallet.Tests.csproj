@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Betty.Wallet.Core\Betty.Wallet.Core.csproj" />
+    <ProjectReference Include="..\..\src\Betty.Wallet.Console\Betty.Wallet.Console.csproj" />
   </ItemGroup>
 
 </Project>

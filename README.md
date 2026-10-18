@@ -1,8 +1,11 @@
 # Betty Wallet
 
-A small C#/.NET 8 application with wallet deposits, withdrawals, and an independent
-slot game in Core. The console currently prints only the application name;
-interactive commands and application wiring will be added later.
+A small C#/.NET 8 console application for wallet deposits, withdrawals, and slot
+bets. Business rules live in Core; the console parses commands and displays
+results through WalletService.
+
+The balance is stored only in memory for the current process and is not saved
+between sessions. Each new application run starts with a balance of `$0.00`.
 
 ## Requirements
 
@@ -15,7 +18,7 @@ interactive commands and application wiring will be added later.
 ```text
 Betty.Wallet.sln
 src/
-  Betty.Wallet.Console/  Console entry point; references Core.
+  Betty.Wallet.Console/  Command parser, command loop, and random source; references Core.
   Betty.Wallet.Core/     WalletService, Wallet, SlotGame, RoundResult, and IRandomSource.
 tests/
   Betty.Wallet.Tests/    Deterministic xUnit tests; references Core.
@@ -38,7 +41,51 @@ dotnet test Betty.Wallet.sln
 
 Tests cover business rules and boundary cases. Slot tests use a scripted fake
 `IRandomSource` that checks requested ranges; they use no real randomness or
-statistical assertions.
+statistical assertions. Console tests use StringReader/StringWriter, a real
+WalletService and SlotGame, and the same deterministic fake random source.
+
+## Console usage
+
+Start the application from the repository root:
+
+```sh
+dotnet run --project src/Betty.Wallet.Console/Betty.Wallet.Console.csproj
+```
+
+Commands are case insensitive and allow extra spaces or tabs:
+
+- `deposit 20` adds funds.
+- `withdraw 5` removes funds if the balance is sufficient.
+- `bet 1.50` places a bet from 1 to 10 inclusive and shows the gross payout.
+- `exit` ends the session. End of input also ends the session normally.
+
+Input assumption: amounts use `InvariantCulture`, with a decimal point and at
+most two digits after it. Thousands separators, currency symbols, and exponents
+are rejected. More than two fractional digits, including trailing zeros such as
+`1.000`, are rejected without rounding. Values that cannot be represented exactly
+as `decimal` are also rejected. An optional leading sign is parsed, but business
+rules still require positive deposits, withdrawals, and bets.
+
+Money is displayed with `$`, a decimal point, and exactly two decimal places,
+independently of the system culture. Invalid input, insufficient funds, and
+overflow show an error and the current balance; the session continues.
+
+One possible session (slot payouts vary):
+
+```text
+Betty Wallet
+Commands: deposit <amount>, withdraw <amount>, bet <amount>, exit.
+Use a decimal point and at most 2 decimal places. Bets: $1.00 to $10.00.
+Balance: $0.00
+> deposit 20
+Deposited $20.00. Balance: $20.00
+> bet 1.50
+Bet: $1.50. Gross payout: $1.52. Balance: $20.02
+> withdraw 5
+Withdrew $5.00. Balance: $15.02
+> exit
+Goodbye.
+```
 
 ## Assumptions and unspecified rules
 
@@ -48,7 +95,8 @@ cannot exceed the balance. All monetary values use `decimal`.
 Slot game rules and explicit assumptions:
 
 - Bets from 1 to 10 inclusive are accepted. Invalid bets are rejected before any
-  random draw. Bets may have more than two decimal places; only payout is rounded.
+  random draw. Core accepts bets with more than two decimal places and rounds only
+  payout; console input is restricted to two fractional digits as documented above.
 - Each round selects a category with `Next(0, 100)`. The upper bound of every
   `IRandomSource.Next` call is exclusive.
 
@@ -63,7 +111,7 @@ Slot game rules and explicit assumptions:
   stake, rather than net profit; the stake is not added a second time.
 - `RoundResult` is immutable and contains `BetAmount`, `Multiplier`, and `Payout`.
 - `SlotGame` receives `IRandomSource` through its constructor and has no dependency
-  on Wallet. A concrete random source and console integration are deferred.
+  on Wallet. The console supplies `SystemRandomSource`, which uses `Random.Shared.Next`.
 
 `WalletService` connects the supplied Wallet and SlotGame synchronously. It exposes
 the current balance and delegates deposits and withdrawals to Wallet. `PlaceBet`
@@ -77,5 +125,5 @@ Invalid arguments, insufficient funds, random source errors, and decimal overflo
 leave the wallet balance unchanged. Decimal overflow propagates as
 `OverflowException`. No concurrency coordination is provided.
 
-Currency remains unspecified. Record any further assumptions here before adding
-rules. Keep the architecture simple and dependencies minimal.
+The console displays amounts as dollars. Record any further assumptions here
+before adding rules. Keep the architecture simple and dependencies minimal.
